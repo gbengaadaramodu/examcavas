@@ -41,6 +41,20 @@ export default function StudentCanvas() {
   const previewTimer   = useRef(null)
   const pagesEndRef    = useRef(null)  // scroll anchor
 
+  // ── Student Metadata ───────────────────────────────────────────────────────
+  const [studentInfo, setStudentInfo] = useState({
+    studentName: '',
+    studentId: '',
+    subject: '',
+    subjectCode: '',
+    examSession: ''
+  })
+
+  const handleInfoChange = (e) => {
+    const { name, value } = e.target
+    setStudentInfo(prev => ({ ...prev, [name]: value }))
+  }
+
   // ── Toast ──────────────────────────────────────────────────────────────────
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type })
@@ -116,6 +130,16 @@ export default function StudentCanvas() {
       return
     }
 
+    // Validate student info
+    const missingFields = Object.entries(studentInfo)
+      .filter(([_, val]) => !val.trim())
+      .map(([key]) => key)
+
+    if (missingFields.length > 0) {
+      showToast('Please fill in all student details before submitting.', 'error')
+      return
+    }
+
     setSubmitting(true)
     try {
       const payload = {
@@ -123,6 +147,8 @@ export default function StudentCanvas() {
         totalMarks:      100,
         rubricSchema:    '[Rubric not configured]',
         studentResponse: JSON.stringify(allData),
+        // Add student metadata to payload
+        ...studentInfo
       }
       const res = await fetch(`${API_BASE}/api/grade`, {
         method:  'POST',
@@ -137,7 +163,7 @@ export default function StudentCanvas() {
     } finally {
       setSubmitting(false)
     }
-  }, [showToast])
+  }, [showToast, studentInfo])
 
   return (
     <div className="app">
@@ -229,6 +255,30 @@ export default function StudentCanvas() {
               >
                 {submitting ? 'Submitting…' : 'Submit'}
               </button>
+            </div>
+          </div>
+
+          {/* Student Info Form */}
+          <div className="student-info-form">
+            <div className="form-group">
+              <label>Student Name</label>
+              <input type="text" name="studentName" value={studentInfo.studentName} onChange={handleInfoChange} placeholder="e.g. John Doe" />
+            </div>
+            <div className="form-group">
+              <label>Student ID</label>
+              <input type="text" name="studentId" value={studentInfo.studentId} onChange={handleInfoChange} placeholder="e.g. STU-12345" />
+            </div>
+            <div className="form-group">
+              <label>Subject</label>
+              <input type="text" name="subject" value={studentInfo.subject} onChange={handleInfoChange} placeholder="e.g. Mathematics" />
+            </div>
+            <div className="form-group">
+              <label>Subject Code</label>
+              <input type="text" name="subjectCode" value={studentInfo.subjectCode} onChange={handleInfoChange} placeholder="e.g. MAT-101" />
+            </div>
+            <div className="form-group">
+              <label>Exam Session</label>
+              <input type="text" name="examSession" value={studentInfo.examSession} onChange={handleInfoChange} placeholder="e.g. Fall 2026" />
             </div>
           </div>
 

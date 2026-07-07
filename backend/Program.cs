@@ -23,11 +23,10 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
-// Configure EF Core DbContext with PostgreSQL Npgsql
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-    ?? "Host=localhost;Database=ExamAssessmentDb;Username=postgres;Password=postgres";
+// Configure EF Core DbContext with Microsoft SQL Server
+var connectionString = "Server=DEVPRIME-LAP-23\\SQLEXPRESS;User Id=sa;Password=P@ssw0rd1$;Database=ewriting;Trusted_Connection=False;TrustServerCertificate=True";
 builder.Services.AddDbContext<ExamDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseSqlServer(connectionString));
 
 // Add CORS policy for local frontend development.
 // WARNING: AllowAnyOrigin() is development-only. In production, replace with
@@ -129,13 +128,21 @@ app.MapPatch("/api/submissions/{id}/approve", async (int id, ApproveScoreRequest
 });
 
 // POST /api/grade - Async assessment engine triggering Semantic Kernel Agent
-app.MapPost("/api/grade", async (GradingRequest request, Kernel kernel, ExamDbContext db, ILogger<Program> logger) =>
+app.MapPost("/api/grade", async (GradingRequest request, Kernel kernel, ILogger<Program> logger, ExamDbContext db) =>
 {
+    // Fetch configuration dynamically from DB based on Subject and Year (ExamSession)
+    // Ignore case for robust matching.
+    var examConfig = await db.ExamConfigurations.FirstOrDefaultAsync(
+        c => c.Subject.ToLower() == request.Subject.ToLower() && c.Year.ToLower() == request.ExamSession.ToLower());
+
+    var activeRubricSchema = examConfig != null 
+        ? examConfig.RubricSchema 
+        : "Evaluate generally on correctness. No specific rubric was found for this subject and year.";
+
     if (string.IsNullOrWhiteSpace(request.QuestionText) || 
-        string.IsNullOrWhiteSpace(request.RubricSchema) || 
         string.IsNullOrWhiteSpace(request.StudentResponse))
     {
-        return Results.BadRequest(new { error = "QuestionText, RubricSchema, and StudentResponse are required fields." });
+        return Results.BadRequest(new { error = "QuestionText and StudentResponse are required fields." });
     }
 
     string gradingMarkdown = "";
@@ -155,7 +162,7 @@ Evaluate the student's response against the question and rubric provided below.
 Question Text: {request.QuestionText}
 Total Max Marks: {request.TotalMarks}
 Rubric Schema:
-{request.RubricSchema}
+{activeRubricSchema}
 
 === CRITICAL EVALUATION PRINCIPLES ===
 1. **Strict Rubric Alignment**: Do not deduct marks for issues not covered by the rubric. Do not reward points for extra details outside the rubric.
@@ -217,17 +224,54 @@ At the very end of your response, write a block enclosed in ```json and ``` cont
         (gradingMarkdown, suggestedScore) = GenerateSimulationGrading(request);
     }
 
-    // If a submission ID is associated, update it in DB
+    // Save or update the submission in the DB
+    Submission? dbSubmission = null;
+
     if (request.SubmissionId.HasValue)
     {
-        var dbSubmission = await db.Submissions.FindAsync(request.SubmissionId.Value);
-        if (dbSubmission != null)
+        dbSubmission = await db.Submissions.FindAsync(request.SubmissionId.Value);
+    }
+    else
+    {
+        // Auto-provision Student
+        var studentEmail = !string.IsNullOrWhiteSpace(request.StudentId) ? request.StudentId : "unknown@student.com";
+        var studentName = !string.IsNullOrWhiteSpace(request.StudentName) ? request.StudentName : "Unknown Student";
+        var student = await db.Users.FirstOrDefaultAsync(u => u.Email == studentEmail);
+        
+        if (student == null)
         {
-            dbSubmission.TranslatedText = request.StudentResponse;
-            dbSubmission.AIGradingLog = gradingMarkdown;
-            dbSubmission.ApprovedScore = suggestedScore;
-            await db.SaveChangesAsync();
+            student = new User { Name = studentName, Email = studentEmail, Role = UserRole.Student };
+            db.Users.Add(student);
         }
+
+        // Auto-provision Exam
+        var examTitle = $"{request.Subject} - {request.SubjectCode} ({request.ExamSession})";
+        if (string.IsNullOrWhiteSpace(examTitle) || examTitle == " -  ()") examTitle = "Untitled Exam";
+        
+        var exam = await db.Exams.FirstOrDefaultAsync(e => e.Title == examTitle);
+        if (exam == null)
+        {
+            exam = new Exam { Title = examTitle, TotalMarks = request.TotalMarks };
+            db.Exams.Add(exam);
+        }
+        
+        // Save to generate IDs for the new Student and Exam
+        await db.SaveChangesAsync();
+
+        dbSubmission = new Submission
+        {
+            ExamId = exam.Id,
+            StudentId = student.Id,
+            RawStrokeJson = request.StudentResponse
+        };
+        db.Submissions.Add(dbSubmission);
+    }
+
+    if (dbSubmission != null)
+    {
+        dbSubmission.AIGradingLog = gradingMarkdown;
+        dbSubmission.ApprovedScore = suggestedScore;
+        await db.SaveChangesAsync();
     }
 
     return Results.Ok(new GradingResponse
@@ -274,6 +318,13 @@ public class GradingRequest
     public string RubricSchema { get; set; } = string.Empty;
     public string StudentResponse { get; set; } = string.Empty;
     public int? SubmissionId { get; set; }
+    
+    // Student Metadata
+    public string StudentName { get; set; } = string.Empty;
+    public string StudentId { get; set; } = string.Empty;
+    public string Subject { get; set; } = string.Empty;
+    public string SubjectCode { get; set; } = string.Empty;
+    public string ExamSession { get; set; } = string.Empty;
 }
 
 public class GradingResponse

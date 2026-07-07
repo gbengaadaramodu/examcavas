@@ -271,6 +271,51 @@ body {
   box-shadow:    none;
 }
 
+/* ─── Student Info Form ───────────────────────────────────────────────────── */
+.student-info-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  padding: 1.25rem 2rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.form-group input {
+  font-family: inherit;
+  font-size: 0.875rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  transition: all 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.2);
+}
+
+.form-group input::placeholder {
+  color: var(--text-dim);
+}
+
 /* ─── Pages Scroll Area ───────────────────────────────────────────────────── */
 .pages-scroll-area {
   flex:       1;

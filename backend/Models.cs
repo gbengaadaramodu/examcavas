@@ -71,4 +71,14 @@ namespace ExamAssessmentSystem.Models
         public Exam Exam { get; set; } = null!;
         public User Student { get; set; } = null!;
     }
+
+    public class ExamConfiguration
+    {
+        public int Id { get; set; }
+        public string Subject { get; set; } = string.Empty;
+        public string Year { get; set; } = string.Empty;
+        
+        // Detailed rubric schema instructions for Semantic Kernel
+        public string RubricSchema { get; set; } = string.Empty;
+    }
 }

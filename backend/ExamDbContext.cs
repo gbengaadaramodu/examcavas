@@ -13,6 +13,7 @@ namespace ExamAssessmentSystem.Data
         public DbSet<Exam> Exams => Set<Exam>();
         public DbSet<Rubric> Rubrics => Set<Rubric>();
         public DbSet<Submission> Submissions => Set<Submission>();
+        public DbSet<ExamConfiguration> ExamConfigurations => Set<ExamConfiguration>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -76,6 +77,15 @@ namespace ExamAssessmentSystem.Data
                     .WithMany(u => u.Submissions)
                     .HasForeignKey(s => s.StudentId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure ExamConfiguration entity
+            modelBuilder.Entity<ExamConfiguration>(entity =>
+            {
+                entity.HasKey(ec => ec.Id);
+                entity.Property(ec => ec.Subject).IsRequired().HasMaxLength(100);
+                entity.Property(ec => ec.Year).IsRequired().HasMaxLength(50);
+                entity.Property(ec => ec.RubricSchema).IsRequired();
             });
         }
     }
