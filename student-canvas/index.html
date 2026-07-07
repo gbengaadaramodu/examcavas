@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Exam - Handwritten Input Canvas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-dark: #1e293b;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 2rem;
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: white;
+    }
+
+    .logo-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+    }
+
+    .main-container {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      padding: 1.5rem;
+      gap: 1.5rem;
+      height: calc(100vh - 73px);
+    }
+
+    @media (max-width: 1024px) {
+      .main-container {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+    }
+
+    .canvas-panel {
+      background-color: var(--panel-dark);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+    }
+
+    .panel-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .canvas-controls {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid var(--border);
+      background-color: transparent;
+      color: var(--text-main);
+    }
+
+    button:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+      border-color: var(--text-muted);
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, var(--accent), #4f46e5);
+      border: none;
+      color: white;
+    }
+
+    button.primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      background-color: #0b0f19;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .canvas-instructions {
+      position: absolute;
+      pointer-events: none;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      text-align: center;
+      z-index: 1;
+      opacity: 0.6;
+    }
+
+    .telemetry-panel {
+      background-color: var(--panel-dark);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+      max-height: 100%;
+    }
+
+    .telemetry-output-container {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      background-color: #0b0f19;
+      color: #38bdf8;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .telemetry-stats {
+      padding: 1rem 1.5rem;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      background-color: rgba(30, 41, 59, 0.4);
+    }
+
+    .stat-card {
+      background-color: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-val {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #10b981;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(1rem);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 50;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-container">
+      <div class="logo-badge">Ω</div>
+      <div class="logo-title">ExamCanvas Client</div>
+    </div>
+    <div style="font-size: 0.875rem; color: var(--text-muted);">
+      Status: <span style="color: #10b981; font-weight: 600;">● Online</span>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <div class="canvas-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pen-tool"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Stylus Drawing Board
+        </div>
+        <div class="canvas-controls">
+          <button id="clearBtn">Clear Board</button>
+          <button id="cacheBtn">Save Offline (IndexedDB)</button>
+          <button id="submitBtn" class="primary">Submit Data</button>
+        </div>
+      </div>
+      <div class="canvas-container">
+        <div class="canvas-instructions" id="instructionTxt">
+          Use a stylus, mouse, or touch to write on this panel.<br>
+          We capture coordinate mapping, pressure, and high-frequency time logs.
+        </div>
+        <canvas id="drawingCanvas"></canvas>
+      </div>
+    </div>
+
+    <div class="telemetry-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 17V7h4a3 3 0 0 1 3 3v0a3 3 0 0 1-3 3H9"/></svg>
+          Vector Stream Telemetry
+        </div>
+      </div>
+      <div class="telemetry-stats">
+        <div class="stat-card">
+          <div class="stat-label">Total Strokes</div>
+          <div class="stat-val" id="strokeCount">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Coordinates Cached</div>
+          <div class="stat-val" id="coordCount">0</div>
+        </div>
+      </div>
+      <div class="telemetry-output-container">
+        <pre id="jsonOutput">// Write on canvas to generate vector data streams...</pre>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast">Data Saved Successfully</div>
+
+  <script type="module">
+    import { StrokeLogger } from './stroke-logger.js';
+
+    const canvas       = document.getElementById("drawingCanvas");
+    const ctx          = canvas.getContext("2d");
+    const instructionTxt = document.getElementById("instructionTxt");
+    const jsonOutput   = document.getElementById("jsonOutput");
+    const strokeCountEl = document.getElementById("strokeCount");
+    const coordCountEl  = document.getElementById("coordCount");
+
+    // ─── DPI-AWARE RESIZE ────────────────────────────────────────────────────
+    // Canvas buffer must be devicePixelRatio × CSS size so drawings are sharp.
+    // ctx.setTransform(dpr,…) maps drawing units back to CSS pixels, so all
+    // ctx calls and pointer coordinates use the same CSS-pixel space.
+    function resizeCanvas() {
+      const dpr  = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width  = Math.round(rect.width  * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.lineCap  = "round";
+      ctx.lineJoin = "round";
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    // ─── RENDERING STATE ─────────────────────────────────────────────────────
+    // Points from pointer events are queued and flushed once per animation frame
+    // (max 60-120fps). This prevents calling ctx.stroke() hundreds of times/sec.
+    let pendingPoints = [];   // points waiting to be drawn in the next rAF
+    let lastDrawn     = null; // last point actually drawn — used for moveTo continuity
+    let rafId         = null; // active rAF handle; null = no frame scheduled
+    let totalPoints   = 0;
+
+    // ─── rAF DRAW FLUSH ──────────────────────────────────────────────────────
+    function scheduleFrame() {
+      if (!rafId) rafId = requestAnimationFrame(flushDrawQueue);
+    }
+
+    function flushDrawQueue() {
+      rafId = null;
+      if (pendingPoints.length === 0) return;
+
+      const batch     = pendingPoints;
+      pendingPoints   = [];
+
+      // Average pressure for this frame → controls line thickness
+      const avgPressure = batch.reduce((s, p) => s + p.pressure, 0) / batch.length;
+      ctx.lineWidth   = Math.max(2.5, avgPressure * 8 + 1);
+      ctx.strokeStyle = "#818cf8";
+      ctx.lineCap     = "round";
+      ctx.lineJoin    = "round";
+
+      // ── Single-point tap: draw a filled dot so it's always visible ──
+      if (batch.length === 1 && !lastDrawn) {
+        ctx.beginPath();
+        ctx.arc(batch[0].canvasX, batch[0].canvasY, ctx.lineWidth / 2, 0, Math.PI * 2);
+        ctx.fillStyle = "#818cf8";
+        ctx.fill();
+        lastDrawn = batch[0];
+        strokeCountEl.innerText = logger.strokes.length;
+        coordCountEl.innerText  = totalPoints;
+        return;
+      }
+
+      // ── Normal path: direct lineTo for pixel-perfect shape fidelity ──
+      // Bézier curves were removed: they use actual points as *control handles*,
+      // which means the line never touches the actual pointer position, causing
+      // curves to appear distorted (e.g. "2" looking like vertical bars).
+      ctx.beginPath();
+
+      if (lastDrawn) {
+        // Continue path from where we last drew (prevents gaps between frames)
+        ctx.moveTo(lastDrawn.canvasX, lastDrawn.canvasY);
+      } else {
+        // First batch of a new stroke — begin exactly at the first point
+        ctx.moveTo(batch[0].canvasX, batch[0].canvasY);
+      }
+
+      for (const pt of batch) {
+        ctx.lineTo(pt.canvasX, pt.canvasY);
+      }
+
+      ctx.stroke();
+      lastDrawn = batch[batch.length - 1];
+
+      // Lightweight stat update inside rAF — no JSON serialisation here
+      strokeCountEl.innerText = logger.strokes.length;
+      coordCountEl.innerText  = totalPoints;
+    }
+
+    // ─── TELEMETRY THROTTLE ───────────────────────────────────────────────────
+    // JSON.stringify(allStrokes) on every pointermove was the main lag source.
+    // Now it runs at most every 250 ms via a one-shot timer.
+    let telemetryTimer = null;
+    function scheduleTelemetryUpdate() {
+      if (telemetryTimer) return;
+      telemetryTimer = setTimeout(() => {
+        telemetryTimer = null;
+        const strokes = logger.strokes;
+        if (strokes.length > 0) {
+          const preview = strokes.slice(-3);
+          jsonOutput.innerText =
+            `// Showing last ${preview.length} of ${strokes.length} strokes\n` +
+            JSON.stringify(preview, null, 2);
+        } else {
+          jsonOutput.innerText = "// Drawing board cleared.";
+        }
+      }, 250);
+    }
+
+    // ─── STROKE LOGGER INIT ───────────────────────────────────────────────────
+    const logger = new StrokeLogger(canvas, {
+      onStrokeStart: (point) => {
+        instructionTxt.style.opacity = "0";
+        // Reset state for this new stroke
+        lastDrawn     = null;
+        pendingPoints = [point]; // Include the pointerdown point so taps & fast
+        totalPoints++;           // strokes always have at least one point to render
+        scheduleFrame();
+      },
+      onStrokeMove: (point) => {
+        totalPoints++;
+        pendingPoints.push(point);
+        scheduleFrame();
+        scheduleTelemetryUpdate();
+      },
+      onStrokeEnd: () => {
+        // Flush remaining queued points synchronously on pen-lift
+        if (pendingPoints.length > 0) flushDrawQueue();
+        lastDrawn = null; // Reset so next stroke starts with a clean moveTo
+        scheduleTelemetryUpdate();
+      }
+    });
+
+
+    // ─── CONTROLS ─────────────────────────────────────────────────────────────
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      // Use CSS-pixel dimensions for clearRect (ctx is DPR-scaled via setTransform)
+      const dpr = window.devicePixelRatio || 1;
+      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      logger.clear();
+      pendingPoints = [];
+      lastDrawn     = null;
+      totalPoints   = 0;
+      instructionTxt.style.opacity = "0.6";
+      strokeCountEl.innerText = "0";
+      coordCountEl.innerText  = "0";
+      jsonOutput.innerText    = "// Drawing board cleared.";
+    });
+
+    document.getElementById("cacheBtn").addEventListener("click", async () => {
+      if (logger.strokes.length === 0) {
+        showToast("Draw something first!", "#f43f5e"); return;
+      }
+      try {
+        await logger.cachePayloadOffline("EXAM-101", "STUDENT-999");
+        showToast("Saved offline successfully!");
+      } catch (err) {
+        showToast("Error saving offline: " + err.message, "#f43f5e");
+      }
+    });
+
+    document.getElementById("submitBtn").addEventListener("click", async () => {
+      if (logger.strokes.length === 0) {
+        showToast("Canvas is empty!", "#f43f5e"); return;
+      }
+      try {
+        const payload = {
+          questionText:   "[Question not set — submitted from canvas client]",
+          totalMarks:     100,
+          rubricSchema:   "[Rubric not set]",
+          studentResponse: logger.getJSONPayload()
+        };
+        const res = await fetch("https://localhost:50949/api/grade", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify(payload)
+        });
+        res.ok
+          ? showToast("Data submitted to backend pipeline!")
+          : showToast("Server error: " + res.status, "#f43f5e");
+      } catch (err) {
+        showToast("Offline — data cached locally.", "#f59e0b");
+        await logger.cachePayloadOffline("EXAM-101", "STUDENT-999");
+      }
+    });
+
+    function showToast(message, bgColor = "#10b981") {
+      const toast = document.getElementById("toast");
+      toast.innerText    = message;
+      toast.style.background = bgColor;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+  </script>
+</body>
+</html>
