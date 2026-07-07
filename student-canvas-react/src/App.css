@@ -20,6 +20,7 @@
   --radius-sm:    8px;
   --shadow:       0 10px 30px -5px rgba(0,0,0,0.4);
   --shadow-sm:    0 4px 12px rgba(0,0,0,0.25);
+  --shadow-page:  0 8px 30px rgba(0,0,0,0.5);
 }
 
 /* ─── Reset ───────────────────────────────────────────────────────────────── */
@@ -128,32 +129,40 @@ body {
   grid-template-columns: 1fr 400px;
   gap:     1.25rem;
   padding: 1.25rem;
-  min-height: 0; /* prevent grid blowout */
+  min-height: 0;
 }
 
 @media (max-width: 1024px) {
   .main-layout { grid-template-columns: 1fr; }
 }
 
-/* ─── Canvas panel ────────────────────────────────────────────────────────── */
+/* ─── Answer Sheet Panel ──────────────────────────────────────────────────── */
 .canvas-panel {
-  background:    var(--surface);
+  background:    var(--bg); /* darker background behind pages */
   border-radius: var(--radius);
   border:        1px solid var(--border);
   display:       flex;
   flex-direction: column;
   overflow:      hidden;
-  box-shadow:    var(--shadow);
+  box-shadow:    inset 0 2px 15px rgba(0,0,0,0.3);
   min-height:    0;
 }
 
 .panel-header {
+  background:      var(--surface);
   display:         flex;
   align-items:     center;
   justify-content: space-between;
   padding:         0.875rem 1.25rem;
   border-bottom:   1px solid var(--border);
   flex-shrink:     0;
+  z-index:         10;
+  box-shadow:      0 4px 15px rgba(0,0,0,0.1);
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
 }
 
 .panel-title {
@@ -165,6 +174,47 @@ body {
   color:       var(--text);
 }
 
+/* ─── Toolbar ─────────────────────────────────────────────────────────────── */
+.tool-toggle {
+  display:       flex;
+  background:    rgba(0,0,0,0.3);
+  border:        1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding:       0.2rem;
+  gap:           0.2rem;
+}
+
+.tool-btn {
+  display:       flex;
+  align-items:   center;
+  gap:           0.4rem;
+  font-family:   inherit;
+  font-size:     0.75rem;
+  font-weight:   600;
+  color:         var(--text-muted);
+  background:    transparent;
+  border:        none;
+  padding:       0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor:        pointer;
+  transition:    all 0.2s;
+}
+
+.tool-btn:hover:not(.active) {
+  background: rgba(255,255,255,0.05);
+  color:      var(--text);
+}
+
+.tool-btn.active {
+  background: var(--surface);
+  color:      var(--accent-2);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.tool-btn.active.eraser-active {
+  color: var(--amber);
+}
+
 .controls {
   display: flex;
   gap:     0.625rem;
@@ -172,6 +222,9 @@ body {
 
 /* ─── Buttons ─────────────────────────────────────────────────────────────── */
 .btn-ghost {
+  display:       flex;
+  align-items:   center;
+  gap:           0.4rem;
   font-family:   inherit;
   font-size:     0.8125rem;
   font-weight:   500;
@@ -183,17 +236,21 @@ body {
   cursor:        pointer;
   transition:    all 0.18s;
 }
-.btn-ghost:hover {
+.btn-ghost:hover:not(:disabled) {
   background:    rgba(255,255,255,0.06);
   border-color:  var(--text-muted);
   color:         var(--text);
+}
+.btn-ghost:disabled {
+  opacity: 0.4;
+  cursor:  not-allowed;
 }
 
 .btn-primary {
   font-family:   inherit;
   font-size:     0.8125rem;
   font-weight:   600;
-  padding:       0.4rem 1rem;
+  padding:       0.4rem 1.2rem;
   border-radius: var(--radius-sm);
   border:        none;
   background:    linear-gradient(135deg, var(--accent), var(--accent-3));
@@ -214,29 +271,97 @@ body {
   box-shadow:    none;
 }
 
-/* ─── Canvas wrap ─────────────────────────────────────────────────────────── */
-.canvas-wrap {
+/* ─── Pages Scroll Area ───────────────────────────────────────────────────── */
+.pages-scroll-area {
   flex:       1;
-  position:   relative;
-  background: #080d18;
-  overflow:   hidden;
-  min-height: 0;
+  overflow-y: auto;
+  padding:    2rem;
+  display:    flex;
+  flex-direction: column;
+  align-items: center;
+  gap:        3rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
 
-  /* Subtle ruled-paper grid lines for a "notebook" feel */
+/* ─── Individual Page ─────────────────────────────────────────────────────── */
+.page-wrapper {
+  width:         100%;
+  max-width:     850px;
+  display:       flex;
+  flex-direction: column;
+  gap:           0.5rem;
+  transition:    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform:     scale(0.98);
+  opacity:       0.8;
+}
+
+.page-wrapper.page-active {
+  transform: scale(1);
+  opacity:   1;
+}
+
+.page-meta {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     flex-end;
+  padding:         0 0.5rem;
+}
+
+.page-label {
+  font-size:      0.75rem;
+  font-weight:    700;
+  color:          var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.clear-page-btn {
+  display:       flex;
+  align-items:   center;
+  gap:           0.3rem;
+  background:    transparent;
+  border:        none;
+  color:         var(--red);
+  font-family:   inherit;
+  font-size:     0.7rem;
+  font-weight:   600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor:        pointer;
+  opacity:       0.7;
+  transition:    opacity 0.2s;
+}
+
+.clear-page-btn:hover {
+  opacity: 1;
+}
+
+.page-surface {
+  position:      relative;
+  width:         100%;
+  aspect-ratio:  1 / 1.414; /* A4 proportion approx */
+  background:    var(--surface);
+  border-radius: 4px;
+  box-shadow:    var(--shadow-page);
+  border:        1px solid var(--border);
+  overflow:      hidden;
+  
+  /* Notebook ruled paper pattern */
   background-image:
-    linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px);
+    linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px);
   background-size: 100% 36px;
   background-position: 0 18px;
 }
 
-.canvas-hint {
+.page-empty-hint {
   position:    absolute;
   inset:       0;
   display:     flex;
   align-items: center;
   justify-content: center;
   color:       var(--text-dim);
-  font-size:   1.125rem;
+  font-size:   1.25rem;
   font-weight: 300;
   letter-spacing: 0.02em;
   pointer-events: none;
@@ -244,19 +369,17 @@ body {
   z-index:     1;
 }
 
-/*
- * The drawing canvas fills the wrap exactly.
- * width/height are set programmatically in useSignaturePad — DO NOT set
- * them in CSS as that conflicts with the DPR buffer sizing.
- */
-.drawing-canvas {
+.page-canvas {
   position: absolute;
   inset:    0;
   width:    100% !important;
   height:   100% !important;
-  cursor:   crosshair;
-  touch-action: none;  /* prevent browser scroll/zoom during drawing */
   z-index:  2;
+  cursor:   crosshair;
+}
+
+.page-surface.eraser-cursor .page-canvas {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'%3E%3Ccircle cx='18' cy='18' r='18' fill='rgba(245, 158, 11, 0.4)' stroke='%23f59e0b' stroke-width='2'/%3E%3C/svg%3E") 18 18, auto;
 }
 
 /* ─── Sidebar ─────────────────────────────────────────────────────────────── */
@@ -321,13 +444,68 @@ body {
   letter-spacing: 0.06em;
 }
 
-.status-badge {
-  font-size:   0.75rem !important;
+.tool-indicator {
+  font-size:   0.8rem !important;
   font-family: var(--font-sans) !important;
   font-weight: 600 !important;
+  text-transform: capitalize;
 }
-.status-badge.idle { color: var(--text-dim)  !important; }
-.status-badge.live { color: var(--green)     !important; }
+.tool-indicator.pen { color: var(--accent-2) !important; }
+.tool-indicator.eraser { color: var(--amber) !important; }
+
+/* ─── Page Map ────────────────────────────────────────────────────────────── */
+.page-map {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.page-map-item {
+  position: relative;
+  width: 40px;
+  height: 52px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-map-item:hover {
+  border-color: var(--text-muted);
+}
+
+.page-map-item.active {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 10px rgba(99,102,241,0.2);
+}
+
+.page-map-item.has-content {
+  background: rgba(255,255,255,0.03);
+}
+
+.page-map-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.page-map-item.active .page-map-num {
+  color: var(--text);
+}
+
+.page-map-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-2);
+  border-radius: 50%;
+}
 
 /* ─── JSON output ─────────────────────────────────────────────────────────── */
 .json-card {
@@ -400,6 +578,7 @@ body {
 .dot.indigo { background: var(--accent-2); }
 .dot.purple { background: var(--purple); }
 .dot.blue   { background: #38bdf8; }
+.dot.red    { background: var(--red); }
 
 /* ─── Toast ───────────────────────────────────────────────────────────────── */
 .toast {
